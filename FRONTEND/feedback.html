@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Parcel Feedback</title>
+<link rel="stylesheet" href="style.css" />
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+.rating-stars span {
+  font-size: 28px;
+  cursor: pointer;
+  color: #ccc;
+}
+
+.rating-stars span.active {
+  color: gold;
+}
+</style>
+</head>
+
+<body>
+<header><h2>⭐ Parcel Feedback</h2></header>
+
+<form id="feedbackForm">
+  <input type="number" id="parcel_id" placeholder="Parcel ID" required />
+  <input type="number" id="customer_id" placeholder="Customer ID" required />
+
+  <p>Rating:</p>
+  <div class="rating-stars" id="starArea">
+    <span data-val="1">★</span>
+    <span data-val="2">★</span>
+    <span data-val="3">★</span>
+    <span data-val="4">★</span>
+    <span data-val="5">★</span>
+  </div>
+
+  <textarea id="comments" placeholder="Comments (optional)"></textarea>
+
+  <button type="submit">Submit Feedback</button>
+</form>
+
+<script>
+let rating = 0;
+
+document.querySelectorAll(".rating-stars span").forEach(star => {
+  star.addEventListener("click", () => {
+    rating = star.getAttribute("data-val");
+    document.querySelectorAll(".rating-stars span").forEach(s => s.classList.remove("active"));
+    for (let i = 0; i < rating; i++) {
+      document.querySelectorAll(".rating-stars span")[i].classList.add("active");
+    }
+  });
+});
+
+document.getElementById("feedbackForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const parcel_id = document.getElementById("parcel_id").value;
+  const customer_id = document.getElementById("customer_id").value;
+  const comments = document.getElementById("comments").value;
+
+  if (!rating) return Swal.fire("Select rating ⭐");
+
+  const res = await fetch("/api/feedback", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ parcel_id, customer_id, rating, comments })
+  });
+
+  const msg = await res.json();
+  Swal.fire(msg.message, "", "success");
+  e.target.reset();
+  document.querySelectorAll(".rating-stars span").forEach(s => s.classList.remove("active"));
+  rating = 0;
+});
+
+
+</script>
+</body>
+</html>

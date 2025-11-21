@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>🚚 Assign Parcel for Delivery</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body>
+<header>
+  <h1>🚚 Assign Parcel for Delivery</h1>
+  <button id="theme-toggle" title="Toggle Dark Mode" style="width: 50px;">🌙</button>
+</header>
+
+<!-- ✅ Pending parcels awaiting delivery -->
+<section class="pending-parcels">
+  <h3>📦 Parcels Awaiting Delivery Assignment</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Parcel ID</th>
+        <th>Customer</th>
+        <th>Type</th>
+        <th>Weight (kg)</th>
+        <th>Status</th>
+        <th>Booked On</th>
+      </tr>
+    </thead>
+    <tbody id="unassigned-table">
+      <tr><td colspan="6" style="text-align:center;">Loading...</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ✅ Assign delivery form -->
+<form id="deliveryForm">
+  <h2>Assign Delivery</h2>
+
+  <input type="number" id="parcel_id" placeholder="Parcel ID" required />
+
+  <select id="agent_id" required>
+    <option value="">Select Delivery Agent</option>
+  </select>
+
+  <select id="vehicle_id" required>
+    <option value="">Select Vehicle</option>
+  </select>
+
+  <button type="submit">Assign Delivery</button>
+</form>
+
+<p style="text-align:center; margin-top:20px;">
+  <a href="index.html">⬅ Back to Dashboard</a>
+</p>
+
+<footer><p>© 2025 CPDS | All Rights Reserved</p></footer>
+
+<script>
+// ✅ Load unassigned parcels
+async function loadUnassignedParcels() {
+  const res = await fetch('/api/delivery/unassigned');
+  const data = await res.json();
+  const tb = document.getElementById("unassigned-table");
+  tb.innerHTML = "";
+
+  if (data.length === 0) {
+    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;">✅ All parcels are assigned!</td></tr>`;
+    return;
+  }
+
+  data.forEach(p => {
+    tb.innerHTML += `
+      <tr onclick="selectParcel(${p.parcel_id})" style="cursor:pointer;">
+        <td>${p.parcel_id}</td>
+        <td>${p.customer}</td>
+        <td>${p.type}</td>
+        <td>${p.weight_kg}</td>
+        <td>${p.status}</td>
+        <td>${new Date(p.booking_date).toLocaleDateString()}</td>
+      </tr>`;
+  });
+}
+
+// ✅ Auto-fill Parcel ID when clicking a row
+function selectParcel(id) {
+  document.getElementById("parcel_id").value = id;
+  Swal.fire({
+    icon: "info",
+    title: "Parcel Selected",
+    text: `Parcel ID ${id} ready for assignment.`,
+    confirmButtonColor: "#007bff"
+  });
+}
+
+// ✅ Load agents
+async function loadAgents() {
+  const res = await fetch("/api/delivery/agents");
+  const agents = await res.json();
+  const dropdown = document.getElementById("agent_id");
+  agents.forEach(a => {
+    let opt = document.createElement("option");
+    opt.value = a.agent_id;
+    opt.textContent = a.name;
+    dropdown.appendChild(opt);
+  });
+}
+
+// ✅ Load vehicles
+async function loadVehicles() {
+  const res = await fetch("/api/delivery/vehicles");
+  const vehicles = await res.json();
+  const dropdown = document.getElementById("vehicle_id");
+  vehicles.forEach(v => {
+    let opt = document.createElement("option");
+    opt.value = v.vehicle_id;
+    opt.textContent = v.vehicle_no;
+    dropdown.appendChild(opt);
+  });
+}
+
+// ✅ Handle form submission
+document.getElementById("deliveryForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const data = {
+    parcel_id: document.getElementById("parcel_id").value,
+    agent_id: document.getElementById("agent_id").value,
+    vehicle_id: document.getElementById("vehicle_id").value
+  };
+
+  const res = await fetch("/api/delivery", {  // ✅ matches backend POST '/'
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+
+  const msg = await res.json();
+
+  if (res.ok) {
+    Swal.fire({
+      icon: "success",
+      title: "✅ Delivery Assigned Successfully",
+      text: msg.message,
+      confirmButtonColor: "#007bff"
+    });
+    e.target.reset();
+    loadUnassignedParcels(); // refresh list
+  } else {
+    Swal.fire({
+      icon: "error",
+      title: "❌ Failed to Assign",
+      text: msg.error || msg.message
+    });
+  }
+});
+
+// ✅ Dark mode toggle
+const btn = document.getElementById("theme-toggle");
+if (localStorage.theme === "dark") {
+  document.body.classList.add("dark-mode");
+  btn.textContent = "☀️";
+}
+btn.onclick = () => {
+  document.body.classList.toggle("dark-mode");
+  const d = document.body.classList.contains("dark-mode");
+  btn.textContent = d ? "☀️" : "🌙";
+  localStorage.theme = d ? "dark" : "light";
+};
+
+// ✅ Initialize all data
+loadUnassignedParcels();
+loadAgents();
+loadVehicles();
+</script>
+</body>
+</html>

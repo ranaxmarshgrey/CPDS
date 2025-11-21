@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>👤 Manage Customers</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body>
+  <header><h1>👤 Customer Management</h1></header>
+
+  <!-- ✅ Add Customer Form -->
+  <form id="customerForm">
+    <h2>Add New Customer</h2>
+    <input type="text" id="name" placeholder="Full Name" required />
+    <input type="password" id="password" placeholder="Password" required />
+
+    <input type="text" id="phone" placeholder="Phone Number" required />
+    <input type="email" id="email" placeholder="Email Address" required />
+    <textarea id="address" placeholder="Address" required></textarea>
+    <button type="submit">Add Customer</button>
+  </form>
+
+  <hr>
+
+  <!-- ✅ Customer List -->
+  <section class="customer-list">
+    <h2>📋 Existing Customers</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Phone</th>
+          <th>Email</th>
+          <th>Address</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="customerTable">
+        <tr><td colspan="6" style="text-align:center;">Loading...</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <p style="text-align:center; margin-top:20px;">
+    <a href="index.html">⬅ Back to Dashboard</a>
+  </p>
+
+  <footer><p>© 2025 CPDS | All Rights Reserved</p></footer>
+
+  <script>
+    const API_URL = "http://localhost:5000/api/customers";
+
+    // ✅ Load all customers
+    async function loadCustomers() {
+      const res = await fetch(API_URL);
+      const data = await res.json();
+      const tb = document.getElementById("customerTable");
+      tb.innerHTML = "";
+
+      if (data.length === 0) {
+        tb.innerHTML = `<tr><td colspan="6" style="text-align:center;">No customers found.</td></tr>`;
+        return;
+      }
+
+      data.forEach(c => {
+  tb.innerHTML += `
+    <tr>
+      <td>${c.customer_id}</td>
+      <td>${c.name}</td>
+      <td>${c.phone}</td>
+      <td>${c.email}</td>
+      <td>${c.address}</td>
+      <td class="actions-cell">
+        <button class="edit-btn" onclick="editCustomer(${c.customer_id}, '${c.name}', '${c.phone}', '${c.address}')">✏️ Edit</button>
+        <button class="delete-btn" onclick="deleteCustomer(${c.customer_id})">🗑️ Delete</button>
+      </td>
+    </tr>`;
+});
+
+    }
+
+    // ✅ Add new customer
+    document.getElementById("customerForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const data = {
+        name: document.getElementById("name").value,
+        password: document.getElementById("password").value,
+        phone: document.getElementById("phone").value,
+        email: document.getElementById("email").value,
+        address: document.getElementById("address").value,
+      };
+
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+
+      const msg = await res.json();
+
+      if (res.ok) {
+        Swal.fire("✅ Success", msg.message, "success");
+        e.target.reset();
+        loadCustomers();
+      } else {
+        Swal.fire("❌ Error", msg.message, "error");
+      }
+    });
+
+    // ✅ Edit customer (popup)
+    async function editCustomer(id, name, phone, address) {
+      const { value: formValues } = await Swal.fire({
+        title: "Edit Customer",
+        html:
+          `<input id="swal-name" class="swal2-input" value="${name}" placeholder="Name">
+           <input id="swal-password" type="password" class="swal2-input" placeholder="New Password (leave empty to keep old)">
+           <input id="swal-phone" class="swal2-input" value="${phone}" placeholder="Phone">
+           <textarea id="swal-address" class="swal2-textarea" placeholder="Address">${address}</textarea>`,
+        focusConfirm: false,
+        confirmButtonText: "Update",
+        preConfirm: () => {
+          return {
+            name: document.getElementById("swal-name").value,
+            password: document.getElementById("swal-password").value || null,
+            phone: document.getElementById("swal-phone").value,
+            address: document.getElementById("swal-address").value,
+          };
+        }
+      });
+
+      if (!formValues) return;
+
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formValues)
+      });
+
+      const msg = await res.json();
+      if (res.ok) {
+        Swal.fire("✅ Updated!", msg.message, "success");
+        loadCustomers();
+      } else {
+        Swal.fire("❌ Error", msg.message, "error");
+      }
+    }
+
+    // ✅ Delete customer (confirmation)
+    async function deleteCustomer(id) {
+      const confirm = await Swal.fire({
+        title: "Are you sure?",
+        text: "This will permanently delete the customer!",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Yes, delete it!",
+        cancelButtonText: "Cancel"
+      });
+
+      if (!confirm.isConfirmed) return;
+
+      const res = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+      const msg = await res.json();
+
+      if (res.ok) {
+        Swal.fire("🗑️ Deleted!", msg.message, "success");
+        loadCustomers();
+      } else {
+        Swal.fire("❌ Error", msg.message, "error");
+      }
+    }
+
+    // ✅ Load customers on page load
+    loadCustomers();
+  </script>
+</body>
+</html>

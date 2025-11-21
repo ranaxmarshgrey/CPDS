@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Manage Delivery Agents</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 12px;
+      text-align: left;
+    }
+    th {
+      background-color: #007bff;
+      color: white;
+    }
+    tr:nth-child(even) {
+      background-color: #f8f9fa;
+    }
+    .actions {
+      display: flex;
+      gap: 8px;
+    }
+    button {
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      color: white;
+      cursor: pointer;
+    }
+    .edit-btn { background-color: #007bff; }
+    .delete-btn { background-color: #dc3545; }
+    .edit-btn:hover { background-color: #0056b3; }
+    .delete-btn:hover { background-color: #b02a37; }
+  </style>
+</head>
+<body>
+
+<header><h1>🧑‍💼 Manage Delivery Agents</h1></header>
+
+<section>
+  <h2>Add New Agent</h2>
+  <form id="agentForm">
+    <input type="text" id="name" placeholder="Full Name" required>
+    <input type="text" id="phone" placeholder="Phone Number" required>
+    <input type="email" id="email" placeholder="Email Address" required>
+    <input type="text" id="region" placeholder="Region" required>
+    <button type="submit">Add Agent</button>
+  </form>
+</section>
+
+<section>
+  <h2>📋 Existing Agents</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Email</th>
+        <th>Region</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="agentTableBody">
+      <tr><td colspan="6" style="text-align:center;">Loading...</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<footer><p>© 2025 CPDS | All Rights Reserved</p></footer>
+
+<script>
+// ✅ Load agents
+async function loadAgents() {
+  const res = await fetch("http://localhost:5000/api/agents");
+  const agents = await res.json();
+  const tb = document.getElementById("agentTableBody");
+  tb.innerHTML = "";
+
+  if (agents.length === 0) {
+    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;">No agents found</td></tr>`;
+    return;
+  }
+
+  agents.forEach(a => {
+    tb.innerHTML += `
+      <tr>
+        <td>${a.agent_id}</td>
+        <td>${a.name}</td>
+        <td>${a.phone || '-'}</td>
+        <td>${a.email || '-'}</td>
+        <td>${a.region || '-'}</td>
+        <td class="actions">
+          <button class="edit-btn" onclick="editAgent(${a.agent_id}, '${a.name}', '${a.phone}', '${a.email}', '${a.region}')">✏️ Edit</button>
+          <button class="delete-btn" onclick="deleteAgent(${a.agent_id})">🗑 Delete</button>
+        </td>
+      </tr>`;
+  });
+}
+
+// ✅ Add new agent
+document.getElementById("agentForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const data = {
+    name: document.getElementById("name").value,
+    phone: document.getElementById("phone").value,
+    email: document.getElementById("email").value,
+    region: document.getElementById("region").value
+  };
+
+  const res = await fetch("http://localhost:5000/api/agents", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+
+  const msg = await res.json();
+  Swal.fire({ icon: "success", title: "Agent Added", text: msg.message });
+  e.target.reset();
+  loadAgents();
+});
+
+// ✅ Edit agent
+function editAgent(id, name, phone, email, region) {
+  Swal.fire({
+    title: "Edit Agent",
+    html: `
+      <input id="editName" class="swal2-input" value="${name}">
+      <input id="editPhone" class="swal2-input" value="${phone}">
+      <input id="editEmail" class="swal2-input" value="${email}">
+      <input id="editRegion" class="swal2-input" value="${region}">
+    `,
+    confirmButtonText: "Update",
+    showCancelButton: true,
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      const updated = {
+        name: document.getElementById("editName").value,
+        phone: document.getElementById("editPhone").value,
+        email: document.getElementById("editEmail").value,
+        region: document.getElementById("editRegion").value
+      };
+
+      const res = await fetch(`http://localhost:5000/api/agents/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated)
+      });
+
+      const msg = await res.json();
+      Swal.fire({ icon: "success", title: "Updated!", text: msg.message });
+      loadAgents();
+    }
+  });
+}
+
+async function deleteAgent(id) {
+  try {
+    const res = await fetch(`http://localhost:5000/api/agents/${id}`, { method: "DELETE" });
+    const msg = await res.json();
+
+    if (!res.ok) {
+      Swal.fire({
+        icon: "error",
+        title: "Deletion Blocked",
+        text: msg.details?.sqlMessage || msg.error || "Unknown error"
+      });
+    } else {
+      Swal.fire({
+        icon: "success",
+        title: "Deleted",
+        text: msg.message
+      });
+      loadAgents();
+    }
+  } catch (err) {
+    Swal.fire({
+      icon: "error",
+      title: "Network Error",
+      text: "Failed to connect to server."
+    });
+  }
+}
+
+
+// Initialize
+loadAgents();
+</script>
+</body>
+</html>

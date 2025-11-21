@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Customer Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>Welcome, <span id="custName"></span>!</h1>
+</header>
+
+<section class="menu">
+  <a href="track_parcel.html" class="card">🔍 Track Parcel</a>
+  <a href="timeline.html" class="card">📍 Track Timeline</a>
+  <a href="feedback.html" class="card">⭐ Submit Feedback</a>
+</section>
+
+<script>
+    // ✅ CUSTOMER PAGE PROTECTION
+if (localStorage.getItem("role") !== "customer") {
+  window.location.href = "index.html";
+}
+document.getElementById("custName").textContent =
+  localStorage.getItem("customer_name") || "Customer";
+</script>
+
+</body>
+</html>

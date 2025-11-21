@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Parcel Timeline</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #eef2f7;
+      padding: 20px;
+    }
+    .container {
+      max-width: 750px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      animation: fadeIn 0.6s;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    input {
+      width: 100%;
+      padding: 14px;
+      margin-bottom: 15px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 17px;
+      transition: 0.2s;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+
+    /* Timeline Style */
+    .timeline {
+      margin-top: 30px;
+      border-left: 3px solid #007bff;
+      padding-left: 30px;
+      position: relative;
+    }
+    .timeline-item {
+      margin-bottom: 25px;
+      position: relative;
+      animation: slideIn 0.4s ease forwards;
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+    @keyframes slideIn {
+      to { opacity: 1; transform: translateX(0); }
+    }
+    .timeline-item::before {
+      content: "";
+      width: 16px;
+      height: 16px;
+      background: #007bff;
+      border-radius: 50%;
+      position: absolute;
+      left: -38px;
+      top: 6px;
+      border: 3px solid white;
+      box-shadow: 0 0 6px rgba(0,0,0,0.2);
+    }
+    .timeline-item.completed::before {
+      background: #28a745;
+    }
+    .status {
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .time {
+      font-size: 14px;
+      color: #444;
+      margin-top: 4px;
+    }
+    .location {
+      font-size: 14px;
+      margin-top: 5px;
+      color: #666;
+    }
+
+    /* Empty State */
+    .empty {
+      text-align: center;
+      padding: 20px;
+      font-size: 16px;
+      color: #666;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h2>📍 Parcel Delivery Timeline</h2>
+
+    <input type="number" id="parcelId" placeholder="Enter Parcel ID">
+
+    <button onclick="loadTimeline()">Track Parcel</button>
+
+    <div id="timeline" class="timeline"></div>
+  </div>
+
+<script>
+async function loadTimeline() {
+  const id = document.getElementById("parcelId").value;
+
+  if (!id) {
+    Swal.fire("Enter a parcel ID!", "", "warning");
+    return;
+  }
+
+  const box = document.getElementById("timeline");
+  box.innerHTML = "<p class='empty'>⏳ Loading...</p>";
+
+  try {
+    const res = await fetch(`http://localhost:5000/api/tracking/${id}`);
+    const data = await res.json();
+
+    box.innerHTML = "";
+
+    // ✅ FIX: use data.tracking_updates instead of data
+    if (!data || !Array.isArray(data.tracking_updates) || data.tracking_updates.length === 0) {
+      box.innerHTML = "<p class='empty'>❌ No tracking information available.</p>";
+      return;
+    }
+
+    const updates = data.tracking_updates;
+
+    updates.forEach((entry, index) => {
+      const item = document.createElement("div");
+      item.className = "timeline-item completed";
+
+      item.style.animationDelay = `${index * 0.12}s`;
+
+      item.innerHTML = `
+        <div class="status">${entry.status}</div>
+        <div class="time">🕓 ${new Date(entry.timestamp).toLocaleString()}</div>
+        <div class="location">📍 ${entry.location_update || "Location not specified"}</div>
+      `;
+
+      box.appendChild(item);
+    });
+  } 
+  catch (error) {
+    console.error(error);
+    Swal.fire("Server Error", "Unable to fetch tracking data.", "error");
+  }
+}
+</script>
+
+</body>
+</html>

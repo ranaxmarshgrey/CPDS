@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Courier & Parcel Delivery Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+</head>
+
+<body>
+
+<header>
+  <h1><img src="./images/delivery-man.png" width="45px"> Courier & Parcel Delivery Dashboard</h1>
+  <button id="theme-toggle" title="Toggle Dark Mode" style="width: 50px;">🌙</button>
+</header>
+
+<!-- Quick Actions -->
+<section class="menu">
+ <a href="manage_customers.html" class="card">👤 Manage Customers</a>
+ <a href="manage_agents.html" class="card">👨‍✈️ Manage Delivery Agents</a>
+
+  <a href="add_parcel.html" class="card">📦 Add Parcel</a>
+  <a href="assign_delivery.html" class="card">🚚 Assign Delivery</a>
+  <a href="track_parcel.html" class="card">🔍 Track Parcel</a>
+  <a href="assign_warehouse.html" class="card">🏬 Assign to Warehouse</a>
+  <a href="release_warehouse.html" class="card">📤 Release from Warehouse</a>
+  <a href="timeline.html" class="card">📍 Track Timeline</a>
+  
+</section>
+
+<main class="dashboard">
+
+  <!-- Summary -->
+  <section class="stats-grid">
+    <div class="card"><h2>Total Customers</h2><p id="total-customers">--</p></div>
+    <div class="card"><h2>Total Parcels</h2><p id="total-parcels">--</p></div>
+    <div class="card"><h2>Total Deliveries</h2><p id="total-deliveries">--</p></div>
+  </section>
+
+  <!-- Charts -->
+  <section class="charts-grid">
+    <div class="chart-card">
+      <h3>📦 Deliveries This Week</h3>
+      <canvas id="weeklyChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>🚚 Delivery Status Overview</h3>
+      <canvas id="deliveryStatusChart"></canvas>
+    </div>
+  </section>
+
+  <!-- Live Delivery Tracking -->
+  <section class="delivery-status">
+    <h3>🚛 Live Delivery Tracking</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Parcel ID</th>
+          <th>Agent</th>
+          <th>Vehicle</th>
+          <th>Status</th>
+          <th>Dispatch Date</th>
+        </tr>
+      </thead>
+      <tbody id="delivery-table-body">
+        <tr><td colspan="5" style="text-align:center;">Loading...</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <br>
+
+  <!-- Recent Parcels -->
+  <section class="recent-parcels">
+    <h3>📋 Recent Parcel Bookings</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Type</th><th>Weight (kg)</th><th>Status</th><th>Booked On</th>
+        </tr>
+      </thead>
+      <tbody id="recent-parcel-body">
+        <tr><td colspan="5">Loading...</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+</main>
+
+<footer><p>© 2025 CPDS | Analytics Dashboard</p></footer>
+
+<script>
+ if (localStorage.getItem("role") !== "admin") {
+  window.location.href = "index.html";  // login page
+}
+// ✅ Summary
+async function loadSummary() {
+  const res = await fetch('/api/dashboard/summary');
+  const d = await res.json();
+  document.getElementById("total-customers").textContent = d.customers;
+  document.getElementById("total-parcels").textContent = d.parcels;
+  document.getElementById("total-deliveries").textContent = d.deliveries;
+}
+
+// ✅ Recent parcels
+async function loadRecentParcels() {
+  const res = await fetch('/api/dashboard/recent-parcels');
+  const data = await res.json();
+  const tb = document.getElementById("recent-parcel-body");
+  tb.innerHTML = "";
+  data.forEach(p => {
+    tb.innerHTML += `
+      <tr>
+        <td>${p.parcel_id}</td>
+        <td>${p.type}</td>
+        <td>${p.weight_kg}</td>
+        <td>${p.status}</td>
+        <td>${new Date(p.booking_date).toLocaleDateString()}</td>
+      </tr>`;
+  });
+}
+
+// ✅ Delivery doughnut chart
+async function loadDeliveryChart() {
+  const r = await fetch('/api/dashboard/delivery-status');
+  const data = await r.json();
+  new Chart(document.getElementById('deliveryStatusChart'), {
+    type: "doughnut",
+    data:{
+      labels:data.map(x=>x.status),
+      datasets:[{data:data.map(x=>x.count),
+      backgroundColor:['#28a745','#007bff','#ffc107','#dc3545','#6c757d']}]
+    },
+    options:{plugins:{legend:{position:"bottom"}}}
+  });
+}
+
+// ✅ Delivery LIVE table (with Mark as Delivered)
+async function loadDeliveryTable() {
+  const res = await fetch('/api/dashboard/delivery-list');
+  const rows = await res.json();
+  const tb = document.getElementById("delivery-table-body");
+  tb.innerHTML = "";
+
+  if (rows.length === 0) {
+    tb.innerHTML = `<tr><td colspan="5" style="text-align:center;">No active deliveries</td></tr>`;
+    return;
+  }
+
+  rows.forEach(r => {
+    const isDeliverable = r.status !== "Delivered";
+
+    tb.innerHTML += `
+      <tr>
+        <td>${r.parcel_id}</td>
+        <td>${r.agent_name || "-"}</td>
+        <td>${r.vehicle_no || "-"}</td>
+        <td>
+          ${
+            isDeliverable
+              ? `<button class="mark-btn" onclick="markDelivered(${r.parcel_id})">📦 Mark as Delivered</button>`
+              : `<span class="status-badge delivered">✅ Delivered</span>`
+          }
+        </td>
+        <td>${new Date(r.dispatch_date).toLocaleDateString()}</td>
+      </tr>`;
+  });
+}
+
+
+// ✅ Mark as Delivered (SweetAlert + correct endpoint)
+async function markDelivered(parcelId) {
+  try {
+    const res = await fetch(`/api/delivery/mark-delivered/${parcelId}`, { method: "POST" });
+    const data = await res.json();
+
+    if (res.ok) {
+      Swal.fire({
+        icon: "success",
+        title: "✅ Delivery Confirmed",
+        text: `Parcel ${parcelId} has been successfully marked as delivered.`,
+        confirmButtonColor: "#007bff"
+      });
+      loadDeliveryTable();
+      loadDeliveryChart();
+    } else {
+      Swal.fire({
+        icon: "error",
+        title: "❌ Update Failed",
+        text: data.error || "Something went wrong while updating the delivery status."
+      });
+    }
+  } catch (err) {
+    console.error("Error:", err);
+    Swal.fire({
+      icon: "error",
+      title: "Server Error",
+      text: "Could not connect to the server. Please try again."
+    });
+  }
+}
+
+
+// ✅ Weekly Fake Chart
+new Chart(document.getElementById("weeklyChart"), {
+  type:"line",
+  data:{
+    labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+    datasets:[{label:"Deliveries",data:[45,60,75,50,90,80,100],borderColor:'#004aad',fill:true}]
+  },
+  options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}
+});
+
+// ✅ Dark mode
+const btn=document.getElementById("theme-toggle");
+if(localStorage.theme==="dark"){document.body.classList.add("dark-mode");btn.textContent="☀️";}
+btn.onclick=()=>{document.body.classList.toggle("dark-mode");const d=document.body.classList.contains("dark-mode");btn.textContent=d?"☀️":"🌙";localStorage.theme=d?"dark":"light";};
+
+// ✅ Init
+loadSummary();
+loadRecentParcels();
+loadDeliveryChart();
+loadDeliveryTable();
+
+</script>
+
+</body>
+</html>

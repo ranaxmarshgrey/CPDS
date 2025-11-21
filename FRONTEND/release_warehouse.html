@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Release Parcel From Warehouse</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body>
+<header>
+  <h1>📦 Release Parcel From Warehouse</h1>
+  <button id="theme-toggle" title="Toggle Dark Mode" style="width:50px;">🌙</button>
+</header>
+
+<form id="releaseForm">
+  <h2>Release Parcel</h2>
+
+  <input type="number" id="parcel_id" placeholder="Parcel ID" required />
+  <button type="submit">Release Parcel</button>
+</form>
+
+<p style="text-align:center; margin-top:20px;">
+  <a href="index.html">⬅ Back to Dashboard</a>
+</p>
+
+<footer><p>© 2025 CPDS | All Rights Reserved</p></footer>
+
+<script>
+document.getElementById("releaseForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const data = {
+    parcel_id: document.getElementById("parcel_id").value
+  };
+
+  const res = await fetch("http://localhost:5000/api/warehouse/release", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+
+  const msg = await res.json();
+
+  if (res.ok) {
+    Swal.fire({
+      icon: "success",
+      title: "✅ Parcel Released",
+      text: msg.message,
+      confirmButtonColor: "#007bff"
+    });
+    e.target.reset();
+  } else {
+    Swal.fire({
+      icon: "error",
+      title: "❌ Failed",
+      text: msg.error || msg.message
+    });
+  }
+});
+
+// Dark mode sync
+const btn = document.getElementById("theme-toggle");
+if (localStorage.theme === "dark") {
+  document.body.classList.add("dark-mode");
+  btn.textContent = "☀️";
+}
+btn.onclick = () => {
+  document.body.classList.toggle("dark-mode");
+  const d = document.body.classList.contains("dark-mode");
+  btn.textContent = d ? "☀️" : "🌙";
+  localStorage.theme = d ? "dark" : "light";
+};
+</script>
+
+</body>
+</html>

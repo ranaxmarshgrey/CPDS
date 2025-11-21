@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Login</title>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+
+  body {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    overflow: hidden;
+    background: linear-gradient(135deg, #1fa2ff, #12d8fa, #a6ffcb);
+    font-family: 'Poppins', sans-serif;
+  }
+
+  /* Floating Animation Shapes */
+  .shape {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.25;
+    filter: blur(3px);
+    animation: float 20s infinite linear;
+  }
+  .shape:nth-child(1) {
+    width: 180px; height: 180px;
+    background: #ffffff;
+    top: 5%; left: 10%;
+  }
+  .shape:nth-child(2) {
+    width: 250px; height: 250px;
+    background: #ffffff;
+    bottom: 10%; right: 15%;
+    animation-duration: 25s;
+  }
+  @keyframes float {
+    0% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-40px) rotate(90deg); }
+    100% { transform: translateY(0px) rotate(180deg); }
+  }
+
+  /* Glassmorphism Login Card */
+  .login-card {
+    width: 420px;
+    padding: 40px 35px;
+    border-radius: 20px;
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+    backdrop-filter: blur(18px);
+    text-align: center;
+    animation: fadeIn 0.8s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translate(-50%, -40%); }
+    to { opacity: 1; transform: translate(-50%, -50%); }
+  }
+
+  h2 {
+    color: #fff;
+    font-size: 30px;
+    margin-bottom: 25px;
+    font-weight: 600;
+  }
+
+  /* Input fields */
+  .input-field {
+    position: relative;
+    margin-bottom: 20px;
+  }
+
+  .input-field input {
+    width: 100%;
+    padding: 14px 50px;
+    font-size: 15px;
+    border-radius: 12px;
+    border: none;
+    outline: none;
+    background: rgba(255,255,255,0.35);
+    color: #fff;
+    font-weight: 500;
+    backdrop-filter: blur(10px);
+    transition: 0.25s;
+  }
+  .input-field input::placeholder {
+    color: #e8e8e8;
+  }
+  .input-field input:focus {
+    background: rgba(255,255,255,0.55);
+  }
+
+  .input-field i {
+    position: absolute;
+    top: 50%;
+    left: 15px;
+    transform: translateY(-50%);
+    color: white;
+    font-size: 18px;
+  }
+
+  /* Login Button */
+  button {
+    width: 100%;
+    padding: 14px;
+    margin-top: 10px;
+    font-size: 18px;
+    font-weight: 600;
+    border-radius: 12px;
+    background: linear-gradient(90deg, #007bff, #0066ff);
+    border: none;
+    color: white;
+    cursor: pointer;
+    transition: 0.25s ease;
+  }
+
+  button:hover {
+    transform: scale(1.03);
+    background: linear-gradient(90deg, #005bd4, #0044c4);
+  }
+
+</style>
+</head>
+
+<body>
+
+<!-- Floating animation shapes -->
+<div class="shape"></div>
+<div class="shape"></div>
+
+<!-- Login Card -->
+<div class="login-card">
+  <img src="./images/delivery-man.png" width="90px">
+  <h2>Welcome Back</h2>
+
+  <div class="input-field">
+    <i>📧</i>
+    <input type="email" style="width: 300px;" id="email" placeholder="Email">
+  </div>
+
+  <div class="input-field">
+    <i>🔒</i>
+    <input type="password" style="width: 300px;" id="password" placeholder="Password">
+  </div>
+
+  <button onclick="login()">Login</button>
+</div>
+
+<script>
+async function login() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const res = await fetch("http://localhost:5000/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password })
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    Swal.fire("Error", data.message, "error");
+    return;
+  }
+
+  if (data.role === "admin") {
+    localStorage.setItem("role", "admin");
+    Swal.fire("Success", "Admin Login Successful!", "success")
+      .then(() => window.location.href = "admin_dashboard.html");
+  } else {
+    localStorage.setItem("role", "customer");
+    localStorage.setItem("customer_id", data.customer_id);
+    localStorage.setItem("customer_name", data.name);
+    Swal.fire("Success", "Welcome!", "success")
+      .then(() => window.location.href = "customer_dashboard.html");
+  }
+}
+</script>
+
+</body>
+</html>

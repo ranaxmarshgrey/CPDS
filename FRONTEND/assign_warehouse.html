@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Assign Parcel to Warehouse</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body>
+<header><h1>🏬 Assign Parcel to Warehouse</h1></header>
+
+<form id="assignForm">
+  <h2>Store Parcel in Warehouse</h2>
+
+  <select id="parcelSelect" required>
+    <option value="">Select Parcel</option>
+  </select>
+
+  <select id="warehouseSelect" required>
+    <option value="">Select Warehouse</option>
+  </select>
+
+  <button type="submit">Assign to Warehouse</button>
+</form>
+
+<p style="text-align:center; margin-top:25px;">
+  <a href="index.html">⬅ Back to Dashboard</a>
+</p>
+
+<script>
+async function loadData() {
+  try {
+    // Fetch warehouses
+    const w = await fetch('/api/warehouse/warehouses');
+    const warehouses = await w.json();
+
+    // Fetch parcels
+    const p = await fetch('/api/warehouse/available-parcels');
+    const parcels = await p.json();
+
+    // DOM references
+    const warehouseSelect = document.getElementById("warehouseSelect");
+    const parcelSelect = document.getElementById("parcelSelect");
+
+    // Populate warehouses
+    warehouses.forEach(ws => {
+      warehouseSelect.innerHTML += `<option value="${ws.warehouse_id}">${ws.location} (Cap: ${ws.capacity})</option>`;
+    });
+
+    // Populate parcels
+    parcels.forEach(px => {
+      parcelSelect.innerHTML += `<option value="${px.parcel_id}">${px.parcel_id} - ${px.type}</option>`;
+    });
+
+  } catch (err) {
+    console.error("Error loading data:", err);
+    Swal.fire("Error", "Failed to load parcels or warehouses.", "error");
+  }
+}
+
+// ✅ Assign form submit
+document.getElementById("assignForm").onsubmit = async (e) => {
+  e.preventDefault();
+
+  const parcel_id = document.getElementById("parcelSelect").value;
+  const warehouse_id = document.getElementById("warehouseSelect").value;
+
+  if (!parcel_id || !warehouse_id) {
+    Swal.fire("Warning", "Please select both parcel and warehouse.", "warning");
+    return;
+  }
+
+  const res = await fetch('/api/warehouse/assign', {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ parcel_id, warehouse_id })
+  });
+
+  const msg = await res.json();
+
+  if (res.ok) {
+    Swal.fire("✅ Success", msg.message, "success");
+    e.target.reset();
+  } else {
+    Swal.fire("❌ Error", msg.error || "Failed to assign parcel", "error");
+  }
+};
+
+// ✅ Load data on page load
+loadData();
+</script>
+
+</body>
+</html>
